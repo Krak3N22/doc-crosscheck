@@ -1,0 +1,32 @@
+# Virtual environments & Python cache
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Local data and exports (prevent accidental commits of sensitive files)
+*.csv
+*.tsv
+*.xlsx
+*.xls
+*.pdf
+*.docx
+*.ldif
+data/
+exports/
+output/
+
+# Allow synthetic example files in examples/
+!examples/*.csv
+!examples/*.txt
+!examples/*.json
+
+# OS / IDE files
+.DS_Store
+.vscode/
+.idea/

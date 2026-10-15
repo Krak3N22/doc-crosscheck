@@ -1,0 +1,6 @@
+EmployeeID;FullName;WorkEmail;Department;EmploymentStatus
+E1001;Kalle Anka;kalle.anka@ankeborg.local;Margarinfabriken;Active
+E1002;Bamse Världens Starkaste;bamse@kullarna.local;Dunderhonung R&D;Active
+E1003;Skalman;skalman@kullarna.local;Mat & Sovklocka;Active
+E1004;Agent Smith;agent.smith@matrix.local;Sentinel Ops;Terminated
+E1005;Thomas "Neo" Anderson;thomas.anderson@metacortex.local;Engineering;Active

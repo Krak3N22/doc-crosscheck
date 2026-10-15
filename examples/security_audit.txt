@@ -1,0 +1,9 @@
+Quarterly Access & Mainframe Review
+Date: 2026-10-01
+
+Approved Nebuchadnezzar & Kullarna Reviewers:
+- kalle.anka@ankeborg.local (Margarinfabriken Operator)
+- skalman@kullarna.local (Chief Inventor, Mat-och-sov-klocka)
+
+Decommissioned Programs Pending Deletion:
+- agent.smith@matrix.local refused deletion and is still replicating in AD.

@@ -1,0 +1,5 @@
+sAMAccountName,UserPrincipalName,DisplayName,Enabled,LastLogonDate
+kalle.anka,kalle.anka@ankeborg.local,Kalle Anka,True,2026-10-14
+bamse,bamse@kullarna.local,Bamse,True,2026-10-15
+agent.smith,agent.smith@matrix.local,Agent Smith,True,2026-08-01
+morpheus,morpheus@nebuchadnezzar.local,Morpheus (Redpill Admin),True,2026-05-10

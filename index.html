@@ -1,0 +1,1718 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CrossCheck</title>
+  <!-- Client-side parsers for Excel (.xlsx), Word (.docx), and PDF (.pdf) so everything runs 100% in the browser on GitHub Pages -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    :root {
+      --bg: #0e1117;
+      --surface: #1c202a;
+      --surface-hover: #262b38;
+      --border: #2e3444;
+      --border-strong: #434c63;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --primary: #ff4b4b;
+      --primary-hover: #e03a3a;
+      --primary-soft: rgba(255, 75, 75, 0.15);
+      --primary-border: rgba(255, 75, 75, 0.45);
+      --radius: 8px;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+
+    /* Top Header & Theme Bar */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .top-right-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .theme-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: var(--radius);
+      font-size: 12.5px;
+      color: var(--text-muted);
+    }
+
+    .theme-control select {
+      width: auto;
+      padding: 4px 8px;
+      font-size: 12.5px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+    }
+
+    .custom-colors {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .color-input-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .color-input-wrap input[type="color"] {
+      width: 24px;
+      height: 24px;
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      background: none;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .privacy-badge {
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 999px;
+    }
+
+    .mode-selector {
+      display: inline-flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 4px;
+      gap: 4px;
+      margin-bottom: 24px;
+    }
+
+    .mode-btn {
+      border: none;
+      background: transparent;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-muted);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .mode-btn:hover {
+      color: var(--text);
+    }
+
+    .mode-btn.active {
+      background: var(--primary);
+      color: #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    hr.divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 28px 0;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    h2 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    /* Toggle Switch */
+    .toggle-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .toggle-wrap input {
+      display: none;
+    }
+
+    .toggle-track {
+      width: 40px;
+      height: 22px;
+      background: var(--border-strong);
+      border-radius: 999px;
+      position: relative;
+      transition: background 0.2s ease;
+    }
+
+    .toggle-thumb {
+      width: 18px;
+      height: 18px;
+      background: #fff;
+      border-radius: 50%;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.2s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+    }
+
+    .toggle-wrap input:checked + .toggle-track {
+      background: var(--primary);
+    }
+
+    .toggle-wrap input:checked + .toggle-track .toggle-thumb {
+      transform: translateX(18px);
+    }
+
+    /* Layout Grids */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 860px) {
+      .grid-2, .grid-3 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Dropzone Card */
+    .dropzone {
+      border: 1.5px dashed var(--border-strong);
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      position: relative;
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+    }
+
+    .dropzone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .dropzone-title {
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .dropzone-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .file-status {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .file-status strong {
+      color: var(--text);
+    }
+
+    /* Expandable details */
+    details.expander {
+      margin-top: 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    details.expander summary {
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    details.expander summary:hover {
+      color: var(--text);
+    }
+
+    .expander-body {
+      padding: 12px 14px;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+      border-radius: 0 0 var(--radius) var(--radius);
+    }
+
+    /* Form Controls */
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .field label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    select, input[type="text"], textarea {
+      width: 100%;
+      padding: 9px 12px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    select:focus, input[type="text"]:focus, textarea:focus {
+      border-color: var(--primary);
+    }
+
+    /* Tag / Pill Multi-select */
+    .pill-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 11px;
+      font-size: 13px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.12s ease;
+      color: var(--text-muted);
+    }
+
+    .pill input {
+      accent-color: var(--primary);
+    }
+
+    .pill.checked {
+      background: var(--primary-soft);
+      border-color: var(--primary-border);
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 9px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      background: var(--surface-hover);
+      border-color: var(--border-strong);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+    }
+
+    /* Metrics */
+    .metric-card {
+      padding: 16px 20px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .metric-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .metric-value {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    /* Result Tabs */
+    .tabs-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      margin-top: 24px;
+      margin-bottom: 16px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .tabs-list {
+      display: flex;
+      gap: 24px;
+    }
+
+    .tab-item {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 10px 2px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      margin-bottom: -1px;
+    }
+
+    .tab-item:hover {
+      color: var(--text);
+    }
+
+    .tab-item.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    /* Data Table */
+    .table-container {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: auto;
+      max-height: 480px;
+      background: var(--bg);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      white-space: nowrap;
+      z-index: 1;
+    }
+
+    td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      white-space: nowrap;
+      max-width: 360px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+    }
+
+    tr:hover td {
+      background: var(--surface);
+    }
+
+    .empty-msg {
+      padding: 32px;
+      text-align: center;
+      color: var(--text-muted);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="top-bar">
+    <h1>CrossCheck</h1>
+    <div class="top-right-controls">
+      <div class="theme-control">
+        <span>Tema</span>
+        <select id="theme-select" onchange="applyTheme(this.value)">
+          <option value="dark-red" selected>Svart / Röd</option>
+          <option value="matrix">Matrix (Svart / Grön)</option>
+          <option value="dark-blue">Midnatt / Blå</option>
+          <option value="dark-purple">Cyber / Lila</option>
+          <option value="light-red">Ljus / Röd</option>
+          <option value="light-blue">Ljus / Blå</option>
+          <option value="custom">Eget tema...</option>
+        </select>
+        <div id="custom-theme-pickers" class="custom-colors hidden">
+          <label class="color-input-wrap" title="Bakgrundsfärg">
+            <span>Bakgrund</span>
+            <input type="color" id="custom-bg" value="#0e1117" oninput="applyCustomColors()" />
+          </label>
+          <label class="color-input-wrap" title="Accentfärg">
+            <span>Accent</span>
+            <input type="color" id="custom-accent" value="#ff4b4b" oninput="applyCustomColors()" />
+          </label>
+        </div>
+      </div>
+      <span class="privacy-badge">100 % lokalt i webbläsaren</span>
+    </div>
+  </div>
+
+  <!-- Mode Selector -->
+  <div class="mode-selector">
+    <button class="mode-btn active" onclick="setMode('table', this)">Tabell mot Tabell</button>
+    <button class="mode-btn" onclick="setMode('doc', this)">Lista mot Dokument</button>
+    <button class="mode-btn" onclick="setMode('regex', this)">Regex-extraktor</button>
+  </div>
+
+  <!-- =================================================================== -->
+  <!-- MODE 1: TABLE VS TABLE                                              -->
+  <!-- =================================================================== -->
+  <div id="view-table">
+    <div class="section-header">
+      <h2>1. Välj filer</h2>
+      <label class="toggle-wrap">
+        <input type="checkbox" id="demo-toggle" onchange="toggleTableDemo(this.checked)" />
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <span>Exempeldata</span>
+      </label>
+    </div>
+
+    <div class="grid-2">
+      <!-- File A -->
+      <div>
+        <h3>Fil A (Kontrolllista)</h3>
+        <div class="dropzone" id="drop-a">
+          <input type="file" id="file-a" accept=".csv,.tsv,.xlsx,.xls,.json,.xml,.ldif,.txt" onchange="handleTableUpload('a', this.files[0])" />
+          <div class="dropzone-title">Dra och släpp fil här eller klicka för att välja</div>
+          <div class="dropzone-sub">CSV, Excel (.xlsx), JSON, XML, LDIF, TXT</div>
+        </div>
+        <div class="file-status" id="status-a"></div>
+        <div id="sheet-wrap-a" class="field hidden" style="margin-top:8px;">
+          <label>Excel-flik</label>
+          <select id="sheet-a" onchange="reloadExcelSheet('a')"></select>
+        </div>
+        <details class="expander hidden" id="exp-a">
+          <summary>Förhandsgranska / filtrera rader</summary>
+          <div class="expander-body">
+            <div class="grid-3" style="margin-bottom:10px;">
+              <div class="field">
+                <label>Kolumn</label>
+                <select id="fcol-a" onchange="runTableComparison()"></select>
+              </div>
+              <div class="field">
+                <label>Villkor</label>
+                <select id="fop-a" onchange="runTableComparison()">
+                  <option value="">Alla rader (inget filter)</option>
+                  <option value="equals">Lika med</option>
+                  <option value="not_equals">Ej lika med</option>
+                  <option value="contains">Innehåller</option>
+                  <option value="not_contains">Innehåller ej</option>
+                  <option value="not_empty">Ej tom</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Värde</label>
+                <input type="text" id="fval-a" placeholder="t.ex. Active" oninput="runTableComparison()" />
+              </div>
+            </div>
+            <div class="table-container" id="preview-a" style="max-height:220px;"></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- File B -->
+      <div>
+        <h3>Fil B (Huvudexport)</h3>
+        <div class="dropzone" id="drop-b">
+          <input type="file" id="file-b" accept=".csv,.tsv,.xlsx,.xls,.json,.xml,.ldif,.txt" onchange="handleTableUpload('b', this.files[0])" />
+          <div class="dropzone-title">Dra och släpp fil här eller klicka för att välja</div>
+          <div class="dropzone-sub">CSV, Excel (.xlsx), JSON, XML, LDIF, TXT</div>
+        </div>
+        <div class="file-status" id="status-b"></div>
+        <div id="sheet-wrap-b" class="field hidden" style="margin-top:8px;">
+          <label>Excel-flik</label>
+          <select id="sheet-b" onchange="reloadExcelSheet('b')"></select>
+        </div>
+        <details class="expander hidden" id="exp-b">
+          <summary>Förhandsgranska / filtrera rader</summary>
+          <div class="expander-body">
+            <div class="grid-3" style="margin-bottom:10px;">
+              <div class="field">
+                <label>Kolumn</label>
+                <select id="fcol-b" onchange="runTableComparison()"></select>
+              </div>
+              <div class="field">
+                <label>Villkor</label>
+                <select id="fop-b" onchange="runTableComparison()">
+                  <option value="">Alla rader (inget filter)</option>
+                  <option value="equals">Lika med</option>
+                  <option value="not_equals">Ej lika med</option>
+                  <option value="contains">Innehåller</option>
+                  <option value="not_contains">Innehåller ej</option>
+                  <option value="not_empty">Ej tom</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Värde</label>
+                <input type="text" id="fval-b" placeholder="t.ex. Enrolled" oninput="runTableComparison()" />
+              </div>
+            </div>
+            <div class="table-container" id="preview-b" style="max-height:220px;"></div>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- Step 2 & 3: Matching & Results -->
+    <div id="match-section" class="hidden">
+      <hr class="divider" />
+      <div class="section-header">
+        <h2>2. Matchning</h2>
+      </div>
+
+      <div class="grid-3">
+        <div class="field">
+          <label>Nyckel i Fil A</label>
+          <select id="key-a" onchange="runTableComparison()"></select>
+        </div>
+        <div class="field">
+          <label>Nyckel i Fil B</label>
+          <select id="key-b" onchange="onKeyBChange()"></select>
+          <div class="field" style="margin-top:8px;">
+            <label>Reservkolumn i Fil B (valfritt)</label>
+            <select id="fallback-b" onchange="runTableComparison()">
+              <option value="">(Ingen)</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Normalisering</label>
+          <div class="pill-group" id="norm-pills">
+            <label class="pill checked"><input type="checkbox" value="trim" checked onchange="togglePill(this); runTableComparison()" /> Trimma mellanslag</label>
+            <label class="pill checked"><input type="checkbox" value="case" checked onchange="togglePill(this); runTableComparison()" /> Ignorera skiftläge (a=A)</label>
+            <label class="pill" id="pill-email"><input type="checkbox" value="email" id="chk-email" onchange="togglePill(this); runTableComparison()" /> Före @ / utan domän</label>
+            <label class="pill"><input type="checkbox" value="hyphen" onchange="togglePill(this); runTableComparison()" /> Ta bort bindestreck (-)</label>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider" />
+      <div class="section-header">
+        <h2>3. Resultat</h2>
+        <div style="display:flex; gap:10px;">
+          <button class="btn" onclick="downloadCurrentTabCsv()">Ladda ner CSV</button>
+          <button class="btn btn-primary" onclick="downloadFullExcel()">Exportera Excel (.xlsx)</button>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="metric-card">
+          <div class="metric-label">Finns i båda</div>
+          <div class="metric-value" id="m-matched">0 st</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Saknas i Fil B</div>
+          <div class="metric-value" id="m-only-a">0 st</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Bara i Fil B</div>
+          <div class="metric-value" id="m-only-b">0 st</div>
+        </div>
+      </div>
+
+      <div class="tabs-bar">
+        <div class="tabs-list">
+          <button class="tab-item active" id="tabbtn-matched" onclick="selectResultTab('matched')">Finns i båda (0)</button>
+          <button class="tab-item" id="tabbtn-only_in_a" onclick="selectResultTab('only_in_a')">Saknas i Fil B (0)</button>
+          <button class="tab-item" id="tabbtn-only_in_b" onclick="selectResultTab('only_in_b')">Bara i Fil B (0)</button>
+        </div>
+        <div style="width:260px;">
+          <input type="text" id="res-filter" placeholder="Sök i resultattabellen..." oninput="renderResultTable()" />
+        </div>
+      </div>
+
+      <div class="table-container" id="res-table-wrap"></div>
+    </div>
+  </div>
+
+  <!-- =================================================================== -->
+  <!-- MODE 2: LIST VS DOCUMENT                                            -->
+  <!-- =================================================================== -->
+  <div id="view-doc" class="hidden">
+    <div class="section-header">
+      <h2>1. Sökord och dokument</h2>
+      <label class="toggle-wrap">
+        <input type="checkbox" id="doc-demo-toggle" onchange="toggleDocDemo(this.checked)" />
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <span>Exempeldata</span>
+      </label>
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <h3>Sökord (Fil A eller klistra in)</h3>
+        <textarea id="doc-terms-input" rows="8" placeholder="Ett sökord, serienummer eller e-post per rad..." oninput="runDocSearch()"></textarea>
+      </div>
+      <div>
+        <h3>Dokument att söka i (Fil B)</h3>
+        <div class="dropzone">
+          <input type="file" id="doc-file-input" accept=".pdf,.docx,.txt,.log,.md,.csv,.json,.xml,.xlsx" onchange="handleDocUpload(this.files[0])" />
+          <div class="dropzone-title">Dra och släpp dokument här eller klicka för att välja</div>
+          <div class="dropzone-sub">PDF, Word (.docx), TXT, LOG, CSV, Excel</div>
+        </div>
+        <div class="file-status" id="doc-status"></div>
+        <div class="pill-group" style="margin-top:12px;">
+          <label class="pill"><input type="checkbox" id="doc-whole-word" onchange="togglePill(this); runDocSearch()" /> Endast hela ord</label>
+          <label class="pill"><input type="checkbox" id="doc-case-sens" onchange="togglePill(this); runDocSearch()" /> Skiftlägeskänslig</label>
+        </div>
+      </div>
+    </div>
+
+    <div id="doc-results-section" class="hidden">
+      <hr class="divider" />
+      <div class="section-header">
+        <h2>2. Resultat</h2>
+        <button class="btn btn-primary" onclick="downloadDocExcel()">Exportera Excel (.xlsx)</button>
+      </div>
+
+      <div class="grid-3">
+        <div class="metric-card">
+          <div class="metric-label">Sökord</div>
+          <div class="metric-value" id="dm-total">0 st</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Hittade</div>
+          <div class="metric-value" id="dm-found">0 st</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Saknas</div>
+          <div class="metric-value" id="dm-missing">0 st</div>
+        </div>
+      </div>
+
+      <div class="tabs-bar">
+        <div class="tabs-list">
+          <button class="tab-item active" id="dtab-hits" onclick="selectDocTab('hits')">Hittade (0)</button>
+          <button class="tab-item" id="dtab-missing" onclick="selectDocTab('missing')">Saknas (0)</button>
+        </div>
+      </div>
+
+      <div class="table-container" id="doc-table-wrap"></div>
+    </div>
+  </div>
+
+  <!-- =================================================================== -->
+  <!-- MODE 3: REGEX EXTRACTOR                                             -->
+  <!-- =================================================================== -->
+  <div id="view-regex" class="hidden">
+    <div class="section-header">
+      <h2>1. Extrahera mönster ur fil</h2>
+    </div>
+    <div class="grid-2">
+      <div>
+        <div class="dropzone">
+          <input type="file" id="regex-file-input" accept=".pdf,.docx,.txt,.log,.md,.csv,.json,.xml" onchange="handleRegexUpload(this.files[0])" />
+          <div class="dropzone-title">Välj fil att extrahera ifrån</div>
+          <div class="dropzone-sub">PDF, Word (.docx), TXT, LOG, CSV, JSON</div>
+        </div>
+        <div class="file-status" id="regex-status"></div>
+      </div>
+      <div>
+        <div class="field">
+          <label>Mönster</label>
+          <select id="regex-preset" onchange="onRegexPresetChange()">
+            <option value="[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+">E-postadresser</option>
+            <option value="\b(?:\d{1,3}\.){3}\d{1,3}\b">IPv4-adresser</option>
+            <option value="\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b">MAC-adresser</option>
+            <option value="\b[A-Z0-9]{6,14}\b">Serienummer / ID (6–14 tecken)</option>
+            <option value="custom">Eget Regex...</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Reguljärt uttryck</label>
+          <input type="text" id="regex-pattern" value="[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+" oninput="runRegexExtraction()" />
+        </div>
+      </div>
+    </div>
+
+    <div id="regex-results-section" class="hidden">
+      <hr class="divider" />
+      <div class="section-header">
+        <h2 id="regex-count-title">Träffar</h2>
+        <button class="btn" onclick="downloadRegexCsv()">Ladda ner CSV</button>
+      </div>
+      <div class="table-container" id="regex-table-wrap"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+
+  // =====================================================================
+  // SYNTHETIC DEMO DATA (Kalle Anka, Bamse, Matrix)
+  // =====================================================================
+  const DEMO_HR_CSV = `EmployeeID;FullName;WorkEmail;Department;EmploymentStatus
+E1001;Kalle Anka;kalle.anka@ankeborg.local;Margarinfabriken;Active
+E1002;Bamse Världens Starkaste;bamse@kullarna.local;Dunderhonung R&D;Active
+E1003;Skalman;skalman@kullarna.local;Mat & Sovklocka;Active
+E1004;Agent Smith;agent.smith@matrix.local;Sentinel Ops;Terminated
+E1005;Thomas "Neo" Anderson;thomas.anderson@metacortex.local;Engineering;Active`;
+
+  const DEMO_AD_CSV = `sAMAccountName,UserPrincipalName,DisplayName,Enabled,LastLogonDate
+kalle.anka,kalle.anka@ankeborg.local,Kalle Anka,True,2026-10-14
+bamse,bamse@kullarna.local,Bamse,True,2026-10-15
+agent.smith,agent.smith@matrix.local,Agent Smith,True,2026-08-01
+morpheus,morpheus@nebuchadnezzar.local,Morpheus (Redpill Admin),True,2026-05-10`;
+
+  const DEMO_AUDIT_TXT = `Quarterly Access & Mainframe Review
+Date: 2026-10-01
+
+Approved Nebuchadnezzar & Kullarna Reviewers:
+- kalle.anka@ankeborg.local (Margarinfabriken Operator)
+- skalman@kullarna.local (Chief Inventor, Mat-och-sov-klocka)
+
+Decommissioned Programs Pending Deletion:
+- agent.smith@matrix.local refused deletion and is still replicating in AD.`;
+
+  // =====================================================================
+  // STATE
+  // =====================================================================
+  const state = {
+    tableA: null,       // { name, columns, rows, delimiter, workbook }
+    tableB: null,
+    matchResult: null,  // { matched, only_in_a, only_in_b, matched_columns, columns_a, columns_b }
+    activeResultTab: 'matched',
+    docChunks: null,    // { name, chunks: [{location, text}] }
+    docResult: null,    // { found_terms, missing_terms, hits }
+    activeDocTab: 'hits',
+    regexDoc: null,
+    regexMatches: []
+  };
+
+  function setMode(mode, btn) {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-table').classList.toggle('hidden', mode !== 'table');
+    document.getElementById('view-doc').classList.toggle('hidden', mode !== 'doc');
+    document.getElementById('view-regex').classList.toggle('hidden', mode !== 'regex');
+  }
+
+  function togglePill(checkbox) {
+    checkbox.parentElement.classList.toggle('checked', checkbox.checked);
+  }
+
+  // =====================================================================
+  // UNIVERSAL CLIENT-SIDE LOADERS (CSV, XLSX, JSON, XML, LDIF, PDF, DOCX)
+  // =====================================================================
+  function detectDelimiter(text) {
+    const firstLines = text.split(/\r?\n/).filter(l => l.trim()).slice(0, 10);
+    if (!firstLines.length) return ',';
+    const candidates = [',', ';', '\t', '|'];
+    let best = ',';
+    let bestCount = 0;
+    for (const d of candidates) {
+      const count = firstLines[0].split(d).length - 1;
+      if (count > bestCount) {
+        bestCount = count;
+        best = d;
+      }
+    }
+    return best;
+  }
+
+  function parseCsvText(text, name) {
+    const clean = text.replace(/^\uFEFF/, '');
+    const delimiter = detectDelimiter(clean);
+    const rowsRaw = [];
+    let cur = '';
+    let inQuotes = false;
+    let currentRow = [];
+
+    for (let i = 0; i < clean.length; i++) {
+      const ch = clean[i];
+      const next = clean[i + 1];
+      if (inQuotes) {
+        if (ch === '"' && next === '"') {
+          cur += '"';
+          i++;
+        } else if (ch === '"') {
+          inQuotes = false;
+        } else {
+          cur += ch;
+        }
+      } else {
+        if (ch === '"') {
+          inQuotes = true;
+        } else if (ch === delimiter) {
+          currentRow.push(cur.trim());
+          cur = '';
+        } else if (ch === '\n' || (ch === '\r' && next === '\n')) {
+          if (ch === '\r') i++;
+          currentRow.push(cur.trim());
+          if (currentRow.some(c => c !== '')) rowsRaw.push(currentRow);
+          currentRow = [];
+          cur = '';
+        } else {
+          cur += ch;
+        }
+      }
+    }
+    if (cur.length > 0 || currentRow.length > 0) {
+      currentRow.push(cur.trim());
+      if (currentRow.some(c => c !== '')) rowsRaw.push(currentRow);
+    }
+
+    if (!rowsRaw.length) return { name, columns: [], rows: [], delimiter };
+    const columns = rowsRaw[0].map((c, idx) => c || `Kolumn_${idx + 1}`);
+    const rows = rowsRaw.slice(1).map(r => {
+      const obj = {};
+      columns.forEach((col, i) => { obj[col] = r[i] !== undefined ? r[i] : ''; });
+      return obj;
+    });
+    return { name, columns, rows, delimiter };
+  }
+
+  function parseLdifText(text, name) {
+    const columns = [];
+    const rows = [];
+    let current = {};
+
+    function flush() {
+      if (!Object.keys(current).length) return;
+      const flat = {};
+      for (const [k, vals] of Object.entries(current)) {
+        if (!columns.includes(k)) columns.push(k);
+        flat[k] = vals.join('; ');
+      }
+      rows.push(flat);
+      current = {};
+    }
+
+    for (const line of text.split(/\r?\n/)) {
+      if (!line.trim()) { flush(); continue; }
+      if (line.startsWith('#')) continue;
+      const idx = line.indexOf(':');
+      if (idx !== -1) {
+        const k = line.slice(0, idx).trim();
+        const v = line.slice(idx + 1).replace(/^[:\s]+/, '').trim();
+        if (!current[k]) current[k] = [];
+        current[k].push(v);
+      }
+    }
+    flush();
+    return { name, columns, rows };
+  }
+
+  async function parseTableFile(file) {
+    const name = file.name;
+    const ext = name.split('.').pop().toLowerCase();
+
+    if (ext === 'xlsx' || ext === 'xls' || ext === 'xlsm') {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const sheetName = wb.SheetNames[0];
+      return extractSheetTable(wb, sheetName, name);
+    }
+
+    const text = await file.text();
+    if (ext === 'json') {
+      let data = JSON.parse(text);
+      if (!Array.isArray(data) && typeof data === 'object') {
+        const listVal = Object.values(data).find(v => Array.isArray(v));
+        data = listVal || Object.entries(data).map(([k, v]) => ({ Key: k, Value: v }));
+      }
+      const columns = [];
+      const rows = data.map(item => {
+        if (typeof item === 'object' && item !== null) {
+          const r = {};
+          for (const [k, v] of Object.entries(item)) {
+            if (!columns.includes(k)) columns.push(k);
+            r[k] = v == null ? '' : (typeof v === 'object' ? JSON.stringify(v) : String(v));
+          }
+          return r;
+        }
+        if (!columns.includes('Value')) columns.push('Value');
+        return { Value: String(item) };
+      });
+      return { name, columns, rows };
+    }
+
+    if (ext === 'ldif') {
+      return parseLdifText(text, name);
+    }
+
+    return parseCsvText(text, name);
+  }
+
+  function extractSheetTable(wb, sheetName, filename) {
+    const ws = wb.Sheets[sheetName];
+    const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    if (!json.length) return { name: filename, columns: [], rows: [], workbook: wb, sheets: wb.SheetNames };
+    const columns = json[0].map((c, i) => String(c || `Kolumn_${i + 1}`).trim());
+    const rows = json.slice(1).filter(r => r.some(cell => String(cell).trim() !== '')).map(r => {
+      const obj = {};
+      columns.forEach((col, i) => { obj[col] = r[i] != null ? String(r[i]).trim() : ''; });
+      return obj;
+    });
+    return { name: filename, columns, rows, workbook: wb, sheets: wb.SheetNames };
+  }
+
+  async function parseDocumentFile(file) {
+    const name = file.name;
+    const ext = name.split('.').pop().toLowerCase();
+
+    if (ext === 'pdf' && window.pdfjsLib) {
+      const buf = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+      const chunks = [];
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const text = content.items.map(it => it.str).join(' ').trim();
+        if (text) chunks.push({ location: `Sida ${i}`, text });
+      }
+      return { name, chunks };
+    }
+
+    if (ext === 'docx' && window.mammoth) {
+      const buf = await file.arrayBuffer();
+      const res = await mammoth.extractRawText({ arrayBuffer: buf });
+      const chunks = res.value
+        .split(/\r?\n/)
+        .map((line, idx) => ({ location: `Stycke ${idx + 1}`, text: line.trim() }))
+        .filter(c => c.text);
+      return { name, chunks };
+    }
+
+    const text = await file.text();
+    const chunks = text
+      .split(/\r?\n/)
+      .map((line, idx) => ({ location: `Rad ${idx + 1}`, text: line.trim() }))
+      .filter(c => c.text);
+    return { name, chunks };
+  }
+
+  // =====================================================================
+  // TABLE VS TABLE LOGIC
+  // =====================================================================
+  async function handleTableUpload(side, file) {
+    if (!file) return;
+    document.getElementById('demo-toggle').checked = false;
+    const table = await parseTableFile(file);
+    setTableSide(side, table);
+  }
+
+  function reloadExcelSheet(side) {
+    const tbl = side === 'a' ? state.tableA : state.tableB;
+    if (!tbl || !tbl.workbook) return;
+    const sheetName = document.getElementById(`sheet-${side}`).value;
+    const updated = extractSheetTable(tbl.workbook, sheetName, tbl.name);
+    setTableSide(side, updated);
+  }
+
+  function setTableSide(side, table) {
+    if (side === 'a') state.tableA = table;
+    else state.tableB = table;
+
+    const delimInfo = table.delimiter ? ` • Avgränsare: ${table.delimiter}` : '';
+    document.getElementById(`status-${side}`).innerHTML =
+      `<span><strong>${escapeHtml(table.name)}</strong> (${table.rows.length} rader, ${table.columns.length} kolumner${delimInfo})</span>`;
+
+    // Sheet selector if multi-sheet Excel
+    const sheetWrap = document.getElementById(`sheet-wrap-${side}`);
+    if (table.sheets && table.sheets.length > 1) {
+      const sel = document.getElementById(`sheet-${side}`);
+      sel.innerHTML = table.sheets.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+      sheetWrap.classList.remove('hidden');
+    } else {
+      sheetWrap.classList.add('hidden');
+    }
+
+    // Filter & preview expander
+    const exp = document.getElementById(`exp-${side}`);
+    exp.classList.remove('hidden');
+    const fcol = document.getElementById(`fcol-${side}`);
+    fcol.innerHTML = table.columns.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    document.getElementById(`preview-${side}`).innerHTML = renderHtmlTable(table.columns, table.rows.slice(0, 25));
+
+    if (state.tableA && state.tableB) {
+      initMatchingControls();
+      document.getElementById('match-section').classList.remove('hidden');
+      runTableComparison();
+    }
+  }
+
+  function toggleTableDemo(enabled) {
+    if (!enabled) {
+      state.tableA = null;
+      state.tableB = null;
+      document.getElementById('status-a').innerHTML = '';
+      document.getElementById('status-b').innerHTML = '';
+      document.getElementById('exp-a').classList.add('hidden');
+      document.getElementById('exp-b').classList.add('hidden');
+      document.getElementById('match-section').classList.add('hidden');
+      return;
+    }
+    setTableSide('a', parseCsvText(DEMO_HR_CSV, 'hr_employees.csv'));
+    setTableSide('b', parseCsvText(DEMO_AD_CSV, 'ad_users.csv'));
+  }
+
+  function smartGuessColumns(colsA, colsB) {
+    const groups = [
+      ['serienummer', 'serial number', 'serial', 'serialnumber', 'sn'],
+      ['workemail', 'email', 'e-post', 'epost', 'userprincipalname', 'upn', 'samaccountname', 'username', 'användarnamn'],
+      ['id', 'employeeid', 'friendly name', 'hostname', 'datornamn']
+    ];
+    const lowA = colsA.map(c => c.toLowerCase().trim());
+    const lowB = colsB.map(c => c.toLowerCase().trim());
+
+    for (let i = 0; i < lowA.length; i++) {
+      const j = lowB.indexOf(lowA[i]);
+      if (j !== -1) return [i, j];
+    }
+    for (const g of groups) {
+      const i = lowA.findIndex(c => g.includes(c));
+      const j = lowB.findIndex(c => g.includes(c));
+      if (i !== -1 && j !== -1) return [i, j];
+    }
+    return [0, 0];
+  }
+
+  function initMatchingControls() {
+    const colsA = state.tableA.columns;
+    const colsB = state.tableB.columns;
+    const [idxA, idxB] = smartGuessColumns(colsA, colsB);
+
+    const selA = document.getElementById('key-a');
+    const selB = document.getElementById('key-b');
+    selA.innerHTML = colsA.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    selB.innerHTML = colsB.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    selA.selectedIndex = idxA;
+    selB.selectedIndex = idxB;
+
+    populateFallbackB();
+
+    // Auto-check email localpart if one column has '@' and the other doesn't
+    const sampleA = state.tableA.rows.slice(0, 5).map(r => String(r[colsA[idxA]] || ''));
+    const sampleB = state.tableB.rows.slice(0, 5).map(r => String(r[colsB[idxB]] || ''));
+    const hasEmailA = sampleA.some(v => v.includes('@'));
+    const hasEmailB = sampleB.some(v => v.includes('@'));
+    const chkEmail = document.getElementById('chk-email');
+    chkEmail.checked = hasEmailA !== hasEmailB;
+    togglePill(chkEmail);
+  }
+
+  function populateFallbackB() {
+    const keyB = document.getElementById('key-b').value;
+    const fb = document.getElementById('fallback-b');
+    const others = state.tableB.columns.filter(c => c !== keyB);
+    fb.innerHTML = '<option value="">(Ingen)</option>' +
+      others.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    if (others.includes('Friendly Name')) {
+      fb.value = 'Friendly Name';
+    }
+  }
+
+  function onKeyBChange() {
+    populateFallbackB();
+    runTableComparison();
+  }
+
+  function applyRowFilter(table, side) {
+    const col = document.getElementById(`fcol-${side}`).value;
+    const op = document.getElementById(`fop-${side}`).value;
+    const val = (document.getElementById(`fval-${side}`).value || '').toLowerCase().trim();
+    if (!op || !col) return table.rows;
+
+    return table.rows.filter(r => {
+      const cell = String(r[col] || '').toLowerCase().trim();
+      if (op === 'equals') return cell === val;
+      if (op === 'not_equals') return cell !== val;
+      if (op === 'contains') return cell.includes(val);
+      if (op === 'not_contains') return !cell.includes(val);
+      if (op === 'not_empty') return cell.length > 0;
+      return true;
+    });
+  }
+
+  function buildNormalizer() {
+    const checked = Array.from(document.querySelectorAll('#norm-pills input:checked')).map(el => el.value);
+    return function (raw) {
+      let s = String(raw || '');
+      if (checked.includes('trim')) s = s.trim();
+      if (checked.includes('email')) {
+        if (s.includes('\\')) s = s.split('\\')[1];
+        if (s.includes('@')) s = s.split('@')[0];
+      }
+      if (checked.includes('hyphen')) s = s.replace(/[-\s]/g, '');
+      if (checked.includes('case')) s = s.toLowerCase();
+      return s;
+    };
+  }
+
+  function runTableComparison() {
+    if (!state.tableA || !state.tableB) return;
+    const rowsA = applyRowFilter(state.tableA, 'a');
+    const rowsB = applyRowFilter(state.tableB, 'b');
+    const keyA = document.getElementById('key-a').value;
+    const keyB = document.getElementById('key-b').value;
+    const fallbackB = document.getElementById('fallback-b').value;
+    const norm = buildNormalizer();
+
+    const bIndex = new Map();
+    rowsB.forEach((rB, idx) => {
+      const candidates = [norm(rB[keyB])];
+      if (fallbackB) candidates.push(norm(rB[fallbackB]));
+      for (const c of candidates) {
+        if (!c) continue;
+        if (!bIndex.has(c)) bIndex.set(c, []);
+        bIndex.get(c).push({ idx, row: rB });
+      }
+    });
+
+    const matchedBIndices = new Set();
+    const matched = [];
+    const onlyInA = [];
+
+    const enrichCols = state.tableB.columns.filter(c => c !== keyB);
+    const matchedColumns = [...state.tableA.columns];
+    const bColMap = {};
+    for (const cB of enrichCols) {
+      const outName = matchedColumns.includes(cB) ? `B.${cB}` : cB;
+      bColMap[cB] = outName;
+      matchedColumns.push(outName);
+    }
+
+    for (const rA of rowsA) {
+      const k = norm(rA[keyA]);
+      const hits = k ? bIndex.get(k) : null;
+      if (hits && hits.length) {
+        hits.forEach(h => matchedBIndices.add(h.idx));
+        const bestB = hits[0].row;
+        const combined = { ...rA };
+        for (const cB of enrichCols) {
+          combined[bColMap[cB]] = bestB[cB] || '';
+        }
+        matched.push(combined);
+      } else {
+        onlyInA.push(rA);
+      }
+    }
+
+    const onlyInB = rowsB.filter((_, idx) => !matchedBIndices.has(idx));
+
+    state.matchResult = {
+      matched,
+      only_in_a: onlyInA,
+      only_in_b: onlyInB,
+      matched_columns: matchedColumns,
+      columns_a: state.tableA.columns,
+      columns_b: state.tableB.columns
+    };
+
+    document.getElementById('m-matched').textContent = `${matched.length} st`;
+    document.getElementById('m-only-a').textContent = `${onlyInA.length} st`;
+    document.getElementById('m-only-b').textContent = `${onlyInB.length} st`;
+
+    document.getElementById('tabbtn-matched').textContent = `Finns i båda (${matched.length})`;
+    document.getElementById('tabbtn-only_in_a').textContent = `Saknas i Fil B (${onlyInA.length})`;
+    document.getElementById('tabbtn-only_in_b').textContent = `Bara i Fil B (${onlyInB.length})`;
+
+    renderResultTable();
+  }
+
+  function selectResultTab(tab) {
+    state.activeResultTab = tab;
+    ['matched', 'only_in_a', 'only_in_b'].forEach(t => {
+      document.getElementById(`tabbtn-${t}`).classList.toggle('active', t === tab);
+    });
+    renderResultTable();
+  }
+
+  function renderResultTable() {
+    if (!state.matchResult) return;
+    const q = (document.getElementById('res-filter').value || '').toLowerCase().trim();
+    const tab = state.activeResultTab;
+    let rows = state.matchResult[tab] || [];
+    const cols = tab === 'matched'
+      ? state.matchResult.matched_columns
+      : (tab === 'only_in_a' ? state.matchResult.columns_a : state.matchResult.columns_b);
+
+    if (q) {
+      rows = rows.filter(r => cols.some(c => String(r[c] || '').toLowerCase().includes(q)));
+    }
+    document.getElementById('res-table-wrap').innerHTML = renderHtmlTable(cols, rows.slice(0, 500));
+  }
+
+  function renderHtmlTable(columns, rows) {
+    if (!rows || !rows.length) {
+      return '<div class="empty-msg">Inga rader att visa.</div>';
+    }
+    let html = '<table><thead><tr><th style="width:42px;">#</th>';
+    for (const col of columns) {
+      html += `<th>${escapeHtml(col)}</th>`;
+    }
+    html += '</tr></thead><tbody>';
+    rows.forEach((row, idx) => {
+      html += `<tr><td style="color:var(--text-muted);">${idx + 1}</td>`;
+      for (const col of columns) {
+        const val = row[col] != null ? String(row[col]) : '';
+        html += `<td title="${escapeHtml(val)}">${escapeHtml(val)}</td>`;
+      }
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    return html;
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // =====================================================================
+  // EXPORTS (EXCEL & CSV)
+  // =====================================================================
+  function downloadCurrentTabCsv() {
+    if (!state.matchResult) return;
+    const tab = state.activeResultTab;
+    const rows = state.matchResult[tab] || [];
+    const cols = tab === 'matched'
+      ? state.matchResult.matched_columns
+      : (tab === 'only_in_a' ? state.matchResult.columns_a : state.matchResult.columns_b);
+    triggerCsvDownload(cols, rows, `${tab}.csv`);
+  }
+
+  function triggerCsvDownload(cols, rows, filename) {
+    const lines = [cols.join(';')];
+    for (const r of rows) {
+      lines.push(cols.map(c => `"${String(r[c] || '').replace(/"/g, '""')}"`).join(';'));
+    }
+    const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+  }
+
+  function downloadFullExcel() {
+    if (!state.matchResult || !window.XLSX) return;
+    const wb = XLSX.utils.book_new();
+
+    function appendSheet(title, cols, rows) {
+      const data = [cols, ...rows.map(r => cols.map(c => r[c] != null ? String(r[c]) : ''))];
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      XLSX.utils.book_append_sheet(wb, ws, title);
+    }
+
+    appendSheet('Finns i bada', state.matchResult.matched_columns, state.matchResult.matched);
+    appendSheet('Saknas i Fil B', state.matchResult.columns_a, state.matchResult.only_in_a);
+    appendSheet('Bara i Fil B', state.matchResult.columns_b, state.matchResult.only_in_b);
+
+    XLSX.writeFile(wb, 'crosscheck_rapport.xlsx');
+  }
+
+  // =====================================================================
+  // MODE 2: LIST VS DOCUMENT
+  // =====================================================================
+  async function handleDocUpload(file) {
+    if (!file) return;
+    document.getElementById('doc-demo-toggle').checked = false;
+    state.docChunks = await parseDocumentFile(file);
+    document.getElementById('doc-status').innerHTML =
+      `<span><strong>${escapeHtml(state.docChunks.name)}</strong> (${state.docChunks.chunks.length} sidor/rader)</span>`;
+    runDocSearch();
+  }
+
+  function toggleDocDemo(enabled) {
+    if (!enabled) {
+      document.getElementById('doc-terms-input').value = '';
+      state.docChunks = null;
+      document.getElementById('doc-status').innerHTML = '';
+      document.getElementById('doc-results-section').classList.add('hidden');
+      return;
+    }
+    const hr = parseCsvText(DEMO_HR_CSV, 'hr_employees.csv');
+    document.getElementById('doc-terms-input').value = hr.rows.map(r => r.WorkEmail).join('\n');
+    state.docChunks = {
+      name: 'security_audit.txt',
+      chunks: DEMO_AUDIT_TXT.split(/\r?\n/).map((l, i) => ({ location: `Rad ${i + 1}`, text: l.trim() })).filter(c => c.text)
+    };
+    document.getElementById('doc-status').innerHTML =
+      `<span><strong>security_audit.txt</strong> (${state.docChunks.chunks.length} rader)</span>`;
+    runDocSearch();
+  }
+
+  function runDocSearch() {
+    const rawTerms = document.getElementById('doc-terms-input').value
+      .split(/\r?\n/)
+      .map(t => t.trim())
+      .filter(Boolean);
+    if (!rawTerms.length || !state.docChunks) return;
+
+    const wholeWord = document.getElementById('doc-whole-word').checked;
+    const caseSens = document.getElementById('doc-case-sens').checked;
+    const uniqueTerms = [...new Set(rawTerms)];
+
+    const foundTerms = [];
+    const missingTerms = [];
+    const hits = [];
+
+    for (const term of uniqueTerms) {
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = wholeWord ? `(?<!\\w)${escaped}(?!\\w)` : escaped;
+      const re = new RegExp(pattern, caseSens ? 'g' : 'gi');
+
+      let found = false;
+      for (const chunk of state.docChunks.chunks) {
+        let m;
+        while ((m = re.exec(chunk.text)) !== null) {
+          found = true;
+          const start = Math.max(0, m.index - 45);
+          const end = Math.min(chunk.text.length, m.index + term.length + 45);
+          let snippet = chunk.text.slice(start, end);
+          if (start > 0) snippet = '...' + snippet;
+          if (end < chunk.text.length) snippet = snippet + '...';
+          hits.push({ Sökord: term, Plats: chunk.location, Textutdrag: snippet });
+        }
+      }
+      if (found) foundTerms.push(term);
+      else missingTerms.push(term);
+    }
+
+    state.docResult = { found_terms: foundTerms, missing_terms: missingTerms, hits };
+    document.getElementById('doc-results-section').classList.remove('hidden');
+
+    document.getElementById('dm-total').textContent = `${uniqueTerms.length} st`;
+    document.getElementById('dm-found').textContent = `${foundTerms.length} st`;
+    document.getElementById('dm-missing').textContent = `${missingTerms.length} st`;
+
+    document.getElementById('dtab-hits').textContent = `Hittade (${foundTerms.length})`;
+    document.getElementById('dtab-missing').textContent = `Saknas (${missingTerms.length})`;
+
+    selectDocTab(state.activeDocTab);
+  }
+
+  function selectDocTab(tab) {
+    state.activeDocTab = tab;
+    document.getElementById('dtab-hits').classList.toggle('active', tab === 'hits');
+    document.getElementById('dtab-missing').classList.toggle('active', tab === 'missing');
+    const wrap = document.getElementById('doc-table-wrap');
+    if (tab === 'hits') {
+      wrap.innerHTML = renderHtmlTable(['Sökord', 'Plats', 'Textutdrag'], state.docResult.hits);
+    } else {
+      wrap.innerHTML = renderHtmlTable(
+        ['Saknat sökord'],
+        state.docResult.missing_terms.map(t => ({ 'Saknat sökord': t }))
+      );
+    }
+  }
+
+  function downloadDocExcel() {
+    if (!state.docResult || !window.XLSX) return;
+    const wb = XLSX.utils.book_new();
+    const hitsData = [['Sökord', 'Plats', 'Textutdrag'], ...state.docResult.hits.map(h => [h.Sökord, h.Plats, h.Textutdrag])];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hitsData), 'Traffar');
+    const missData = [['Saknat sökord'], ...state.docResult.missing_terms.map(t => [t])];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(missData), 'Saknas');
+    XLSX.writeFile(wb, 'dokumentsokning.xlsx');
+  }
+
+  // =====================================================================
+  // MODE 3: REGEX EXTRACTOR
+  // =====================================================================
+  async function handleRegexUpload(file) {
+    if (!file) return;
+    state.regexDoc = await parseDocumentFile(file);
+    document.getElementById('regex-status').innerHTML =
+      `<span><strong>${escapeHtml(state.regexDoc.name)}</strong></span>`;
+    runRegexExtraction();
+  }
+
+  function onRegexPresetChange() {
+    const val = document.getElementById('regex-preset').value;
+    if (val !== 'custom') {
+      document.getElementById('regex-pattern').value = val;
+      runRegexExtraction();
+    }
+  }
+
+  function runRegexExtraction() {
+    if (!state.regexDoc) return;
+    const pat = document.getElementById('regex-pattern').value;
+    if (!pat) return;
+    try {
+      const re = new RegExp(pat, 'g');
+      const fullText = state.regexDoc.chunks.map(c => c.text).join('\n');
+      const matches = [...new Set(fullText.match(re) || [])];
+      state.regexMatches = matches;
+      document.getElementById('regex-results-section').classList.remove('hidden');
+      document.getElementById('regex-count-title').textContent = `Träffar (${matches.length} unika)`;
+      document.getElementById('regex-table-wrap').innerHTML = renderHtmlTable(
+        ['Värde'],
+        matches.map(m => ({ 'Värde': m }))
+      );
+    } catch (e) {
+      // Invalid regex while typing
+    }
+  }
+
+  function downloadRegexCsv() {
+    triggerCsvDownload(['Värde'], state.regexMatches.map(m => ({ 'Värde': m })), 'extraherad_lista.csv');
+  }
+
+  // =====================================================================
+  // THEME ENGINE (Presets + Custom Color Generator)
+  // =====================================================================
+  const THEMES = {
+    'dark-red': {
+      bg: '#0e1117', surface: '#1c202a', surfaceHover: '#262b38',
+      border: '#2e3444', borderStrong: '#434c63',
+      text: '#f3f4f6', textMuted: '#9ca3af',
+      primary: '#ff4b4b', primaryHover: '#e03a3a',
+      primarySoft: 'rgba(255, 75, 75, 0.15)', primaryBorder: 'rgba(255, 75, 75, 0.45)'
+    },
+    'matrix': {
+      bg: '#080d0a', surface: '#101914', surfaceHover: '#17261e',
+      border: '#1f3529', borderStrong: '#2d503c',
+      text: '#e2fbe8', textMuted: '#7fa98b',
+      primary: '#00e676', primaryHover: '#00c853',
+      primarySoft: 'rgba(0, 230, 118, 0.14)', primaryBorder: 'rgba(0, 230, 118, 0.45)'
+    },
+    'dark-blue': {
+      bg: '#0b1120', surface: '#151f32', surfaceHover: '#1e293b',
+      border: '#263449', borderStrong: '#3b4f6b',
+      text: '#f1f5f9', textMuted: '#94a3b8',
+      primary: '#3b82f6', primaryHover: '#2563eb',
+      primarySoft: 'rgba(59, 130, 246, 0.16)', primaryBorder: 'rgba(59, 130, 246, 0.45)'
+    },
+    'dark-purple': {
+      bg: '#100c1c', surface: '#1b152e', surfaceHover: '#261e40',
+      border: '#302652', borderStrong: '#48387a',
+      text: '#f5f3ff', textMuted: '#a79ec7',
+      primary: '#a855f7', primaryHover: '#9333ea',
+      primarySoft: 'rgba(168, 85, 247, 0.16)', primaryBorder: 'rgba(168, 85, 247, 0.45)'
+    },
+    'light-red': {
+      bg: '#ffffff', surface: '#f8f9fb', surfaceHover: '#f1f3f7',
+      border: '#e2e6ee', borderStrong: '#cbd2e0',
+      text: '#1e232d', textMuted: '#646e82',
+      primary: '#e11d48', primaryHover: '#be123c',
+      primarySoft: 'rgba(225, 29, 72, 0.1)', primaryBorder: 'rgba(225, 29, 72, 0.35)'
+    },
+    'light-blue': {
+      bg: '#ffffff', surface: '#f8f9fb', surfaceHover: '#f1f3f7',
+      border: '#e2e6ee', borderStrong: '#cbd2e0',
+      text: '#1e232d', textMuted: '#646e82',
+      primary: '#2563eb', primaryHover: '#1d4ed8',
+      primarySoft: 'rgba(37, 99, 235, 0.1)', primaryBorder: 'rgba(37, 99, 235, 0.35)'
+    }
+  };
+
+  function setCssVars(vars) {
+    const root = document.documentElement.style;
+    root.setProperty('--bg', vars.bg);
+    root.setProperty('--surface', vars.surface);
+    root.setProperty('--surface-hover', vars.surfaceHover);
+    root.setProperty('--border', vars.border);
+    root.setProperty('--border-strong', vars.borderStrong);
+    root.setProperty('--text', vars.text);
+    root.setProperty('--text-muted', vars.textMuted);
+    root.setProperty('--primary', vars.primary);
+    root.setProperty('--primary-hover', vars.primaryHover);
+    root.setProperty('--primary-soft', vars.primarySoft);
+    root.setProperty('--primary-border', vars.primaryBorder);
+  }
+
+  function hexToRgb(hex) {
+    const clean = hex.replace('#', '');
+    const num = parseInt(clean, 16);
+    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+  }
+
+  function shiftColor(hex, amount) {
+    const { r, g, b } = hexToRgb(hex);
+    const clamp = v => Math.max(0, Math.min(255, Math.round(v)));
+    const toHex = v => clamp(v).toString(16).padStart(2, '0');
+    return `#${toHex(r + amount)}${toHex(g + amount)}${toHex(b + amount)}`;
+  }
+
+  function applyCustomColors() {
+    const bgHex = document.getElementById('custom-bg').value;
+    const accHex = document.getElementById('custom-accent').value;
+    const bgRgb = hexToRgb(bgHex);
+    const accRgb = hexToRgb(accHex);
+    const luminance = (0.299 * bgRgb.r + 0.587 * bgRgb.g + 0.114 * bgRgb.b) / 255;
+    const isDark = luminance < 0.5;
+
+    const vars = {
+      bg: bgHex,
+      surface: shiftColor(bgHex, isDark ? 16 : -10),
+      surfaceHover: shiftColor(bgHex, isDark ? 26 : -18),
+      border: shiftColor(bgHex, isDark ? 34 : -28),
+      borderStrong: shiftColor(bgHex, isDark ? 54 : -48),
+      text: isDark ? '#f3f4f6' : '#1e232d',
+      textMuted: isDark ? '#9ca3af' : '#646e82',
+      primary: accHex,
+      primaryHover: shiftColor(accHex, -20),
+      primarySoft: `rgba(${accRgb.r}, ${accRgb.g}, ${accRgb.b}, ${isDark ? 0.16 : 0.12})`,
+      primaryBorder: `rgba(${accRgb.r}, ${accRgb.g}, ${accRgb.b}, 0.45)`
+    };
+    setCssVars(vars);
+    try {
+      localStorage.setItem('crosscheck_theme', 'custom');
+      localStorage.setItem('crosscheck_custom_bg', bgHex);
+      localStorage.setItem('crosscheck_custom_accent', accHex);
+    } catch (e) {}
+  }
+
+  function applyTheme(themeKey) {
+    const customPickers = document.getElementById('custom-theme-pickers');
+    if (themeKey === 'custom') {
+      customPickers.classList.remove('hidden');
+      applyCustomColors();
+      return;
+    }
+    customPickers.classList.add('hidden');
+    const theme = THEMES[themeKey] || THEMES['dark-red'];
+    setCssVars(theme);
+    try {
+      localStorage.setItem('crosscheck_theme', themeKey);
+    } catch (e) {}
+  }
+
+  // Restore saved theme on load
+  (function initTheme() {
+    try {
+      const saved = localStorage.getItem('crosscheck_theme') || 'dark-red';
+      const savedBg = localStorage.getItem('crosscheck_custom_bg');
+      const savedAcc = localStorage.getItem('crosscheck_custom_accent');
+      if (savedBg) document.getElementById('custom-bg').value = savedBg;
+      if (savedAcc) document.getElementById('custom-accent').value = savedAcc;
+      document.getElementById('theme-select').value = saved;
+      applyTheme(saved);
+    } catch (e) {}
+  })();
+
+  // Drag-and-drop visual highlight
+  document.querySelectorAll('.dropzone').forEach(zone => {
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', () => zone.classList.remove('dragover'));
+  });
+</script>
+</body>
+</html>
